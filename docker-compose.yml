@@ -1,0 +1,62 @@
+services:
+  web-app:
+    container_name: app-anahelo
+    build: ../app-anahelo
+    expose:
+      - "3000"
+    environment:
+      NUXT_PUBLIC_API_BASE: ${API_BASE_URL:-/api}
+      NUXT_PUBLIC_DEFAULT_THEME: ${DEFAULT_THEME:-valentine}
+      NUXT_PUBLIC_DARK_THEME: ${DARK_THEME:-dark}
+      NUXT_PUBLIC_NODE_ENV: ${NODE_ENV:-production}
+    networks:
+      - inventory-control-network
+
+  api-inventory-control:
+    container_name: api-anahelo
+    build: ../api-inventory-control
+    expose:
+      - "8000"
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 8000
+      FRONT_URL: ${FRONT_URL:-http://localhost}
+      DB_URL: ${DB_URL}
+    networks:
+      - inventory-control-network
+
+  postgres:
+    image: postgres:13
+    container_name: inventory-control-postgres
+    environment:
+      POSTGRES_DB: inventorycontroldb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - inventory-control-network
+
+  nginx:
+    image: nginx:stable
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - web-app
+      - api-inventory-control
+    networks:
+      - inventory-control-network
+
+volumes:
+  postgres_data:
+
+networks:
+  inventory-control-network:
+    driver: bridge
